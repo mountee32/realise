@@ -1,2 +1,7 @@
-pip install fastapi[all] uvicorn sqlalchemy databases python-dotenv psycopg2-binary
-pip install asyncpg
+fastapi==0.103.2
+uvicorn==0.23.2
+databases==0.8.0
+sqlalchemy==1.4.49
+python-dotenv==1.0.0
+pydantic==2.4.2
+asyncpg==0.28.0
