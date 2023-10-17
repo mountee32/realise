@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/andy/realise
+cd /home/andy/realise/realise
 GIT_BEFORE_PULL=$(git rev-parse HEAD)
 git pull
 GIT_AFTER_PULL=$(git rev-parse HEAD)
