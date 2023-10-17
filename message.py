@@ -115,4 +115,4 @@ async def update_message(message_id: UUID4, update_data: MessageCreate, token: s
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(message_app, host="0.0.0.0", port=8000)
+    uvicorn.run(message_app, host="0.0.0.0", port=8001)
