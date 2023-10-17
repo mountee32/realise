@@ -19,6 +19,12 @@ from sqlalchemy.orm import sessionmaker
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_TOKEN = os.getenv("API_TOKEN")
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable not set.")
+if not API_TOKEN:
+    raise ValueError("API_TOKEN environment variable not set.")
+
 security = HTTPBearer()
 database = Database(DATABASE_URL)
 metadata = MetaData()
@@ -63,28 +69,32 @@ class MessageResponse(MessageCreate):
 message_app = FastAPI()
 
 def verify_token(authorization: HTTPAuthorizationCredentials = Depends(security)):
-    static_token = API_TOKEN
-    if authorization.credentials != static_token:
+    if authorization.credentials != API_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid token or unauthorized!")
     return authorization.credentials
 
 @message_app.on_event("startup")
 async def startup_event():
-    await database.connect()
+    try:
+        await database.connect()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to connect to database: {str(e)}")
 
 @message_app.on_event("shutdown")
 async def shutdown_event():
-    await database.disconnect()
+    try:
+        await database.disconnect()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to disconnect from database: {str(e)}")
 
 @message_app.post("/message/", response_model=MessageResponse)
 async def create_message(message: MessageCreate, token: str = Depends(verify_token)):
     new_message = message.dict()
-    if new_message["sentiment_score"] is None:
-        del new_message["sentiment_score"]
     new_message["message_id"] = str(uuid.uuid4())
-    result = await database.execute(Message.__table__.insert().values(new_message))
-    
-    # Return the full message data including the new message_id
+    try:
+        result = await database.execute(Message.__table__.insert().values(new_message))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to insert message into database: {str(e)}")
     return {**new_message, "message_id": new_message["message_id"]}
 
 @message_app.get("/message/conversation/{conversation_id}", response_model=List[MessageList])
@@ -108,11 +118,14 @@ async def update_message(message_id: UUID4, update_data: MessageCreate, token: s
         .values(update_values)
         .returning(Message)
     )
-    result = await database.fetch_one(query)
+    try:
+        result = await database.fetch_one(query)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update message: {str(e)}")
     if result is None:
         raise HTTPException(status_code=404, detail="Message not found")
     return result
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(message_app, host="0.0.0.0", port=8001)
+    uvicorn.run(message_app, host="0.0.0.0", port=8002)
